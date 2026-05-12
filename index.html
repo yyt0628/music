@@ -24,7 +24,7 @@ body{height:100vh;display:flex;flex-direction:column;overflow:hidden}
   to{opacity:0.6;}
 }
 
-.head{height:48px;background:rgba(0,0,0,0.3);display:flex;align-items:center;padding:0 20px;justify-content:space-between;color:#ccc;font-size:12px}
+.head{height:48px;background:rgba(0,0,0,0.3);display:flex;align-items:center;padding:0 20px;color:#ccc;font-size:12px}
 .main{flex:1;display:flex;padding:30px}
 
 .disc{flex:1;display:flex;justify-content:center;align-items:center;position:relative}
@@ -57,8 +57,11 @@ body{height:100vh;display:flex;flex-direction:column;overflow:hidden}
 .rate-btn{
   color:#fff;background:rgba(255,255,255,0.1);
   border:none;border-radius:6px;padding:4px 8px;
-  cursor:pointer;font-size:12px;margin-left:6px
+  cursor:pointer;font-size:12px
 }
+
+.progress-box{width:200px;height:4px;background:#333;border-radius:2px;cursor:pointer}
+.progress{height:100%;background:#fff;width:0%;border-radius:2px}
 
 .volume-box{display:flex;align-items:center;gap:8px}
 .volume{width:80px;height:4px;background:#333;border-radius:2px;cursor:pointer}
@@ -87,7 +90,6 @@ body{height:100vh;display:flex;flex-direction:column;overflow:hidden}
 <div class="bg"></div>
 <div class="head">
 <div>网易云音乐</div>
-<!-- 去掉了窗口控制 -->
 </div>
 <div class="user">学号：24215220106 姓名：叶燕婷</div>
 
@@ -115,6 +117,9 @@ body{height:100vh;display:flex;flex-direction:column;overflow:hidden}
     <button id="toggle"></button>
     <button id="next"></button>
     <button class="rate-btn" id="rateBtn">1.0x</button>
+    <div class="progress-box" id="progressBox">
+      <div class="progress" id="progress"></div>
+    </div>
   </div>
   <div class="bar-right">
     <div class="volume-box">
@@ -133,7 +138,7 @@ body{height:100vh;display:flex;flex-direction:column;overflow:hidden}
   </div>
 </div>
 
-<audio id="audio">
+<audio id="audio"></audio>
 
 <script>
 const music = [
@@ -172,7 +177,8 @@ const music = [
     lrc:`[00:00.00]江南
 [00:15.00]圈圈圆圆圈圈
 [00:18.00]天天年年天天的我
-[00:22.00]深深看你的脸`
+[00:22.00]深深看你的脸
+[00:25.00]生气的温柔埋怨的温柔`
   },
   {
     name:"春不晚",
@@ -205,6 +211,8 @@ const volInner = document.getElementById("volumeInner")
 const bg = document.querySelector(".bg")
 const list = document.getElementById("list")
 const rateBtn = document.getElementById("rateBtn")
+const progress = document.getElementById("progress")
+const progressBox = document.getElementById("progressBox")
 
 let i = 0
 let p = false
@@ -212,7 +220,7 @@ let lt = []
 let lc = []
 let mode = 0
 let muted = false
-let rateList = [0.75, 1.0, 1.25, 1.5, 2.0]
+let rateList = [0.75,1.0,1.25,1.5,2.0]
 let rateIndex = 1
 
 function loadList(){
@@ -255,6 +263,7 @@ function lp(x){
   })
   rl()
 }
+
 function rl(){
   l.innerHTML=""
   lc.forEach(x=>{
@@ -287,6 +296,13 @@ function up(){
   }
 }
 
+function updateProgress(){
+  if(a.duration){
+    let per = (a.currentTime/a.duration)*100
+    progress.style.width = per+"%"
+  }
+}
+
 function changeMode(){
   mode=(mode+1)%3
   if(mode===0){rand.style.backgroundImage='url(./mode1.png)'}
@@ -307,6 +323,7 @@ function toggleMute(){
   a.muted=muted
   vol.style.backgroundImage=muted?'url(./静音.png)':'url(./音量.png)'
 }
+
 function setVolume(e){
   const w=volBar.clientWidth
   const v=e.offsetX/w
@@ -314,11 +331,17 @@ function setVolume(e){
   volInner.style.width=v*100+"%"
 }
 
+progressBox.onclick = (e)=>{
+  const rect = progressBox.getBoundingClientRect()
+  const pos = (e.clientX - rect.left)/rect.width
+  a.currentTime = pos * a.duration
+}
+
 rateBtn.onclick = () => {
-  rateIndex = (rateIndex + 1) % rateList.length
+  rateIndex = (rateIndex+1)%rateList.length
   let r = rateList[rateIndex]
   a.playbackRate = r
-  rateBtn.innerText = r.toFixed(2) + 'x'
+  rateBtn.innerText = r.toFixed(2)+'x'
 }
 
 pv.onclick=()=>{i=(i-1+music.length)%music.length;load();a.play();p=true;r.classList.add("play");am.classList.add("play");updateBtn()}
@@ -328,7 +351,7 @@ tog.onclick=pt
 rand.onclick=changeMode
 vol.onclick=toggleMute
 volBar.onclick=setVolume
-a.ontimeupdate=up
+a.ontimeupdate=()=>{up();updateProgress()}
 a.onended=handleEnd
 ol.onclick=()=>list.classList.add("show")
 cl.onclick=()=>list.classList.remove("show")
