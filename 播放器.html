@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>音乐播放器</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Microsoft YaHei}
+body{height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+.bg{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  background:url(./bg0.png) center/cover no-repeat;
+  filter:blur(12px);transform:scale(1.1);z-index:-1;
+  transition:background-image 0.8s ease;
+}
+.bg::after{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(circle at center, rgba(255,255,255,0.2), transparent 70%);
+  animation: breath 6s infinite alternate ease-in-out;
+}
+@keyframes breath{
+  from{opacity:0.3;}
+  to{opacity:0.6;}
+}
+
+.head{height:48px;background:rgba(0,0,0,0.3);display:flex;align-items:center;padding:0 20px;justify-content:space-between;color:#ccc;font-size:12px}
+.main{flex:1;display:flex;padding:30px}
+
+.disc{flex:1;display:flex;justify-content:center;align-items:center;position:relative}
+.record{
+  width:340px;height:340px;border-radius:50%;
+  background:url(./record0.jpg) center/cover no-repeat;
+  box-shadow:0 0 30px rgba(255,255,255,0.3), 0 0 80px rgba(255,255,255,0.15);
+  animation:rot 20s linear infinite;animation-play-state:paused;
+  transition:background-image 0.6s ease;
+}
+.record.play{animation-play-state:running}
+.arm{position:absolute;top:0;left:50%;transform-origin:top center;width:120px;height:120px;transition:transform 0.5s}
+.arm.play{transform:rotate(10deg)}
+
+.panel{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:12px}
+.song-name{font-size:26px;color:#fff;font-weight:500}
+.singer-name{font-size:16px;color:rgba(255,255,255,0.7)}
+
+.lyric-box{width:380px;height:180px;overflow:hidden;position:relative;text-align:center;margin-top:10px}
+.lyric{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:100%}
+.line{height:32px;line-height:32px;color:#777;transition:0.3s}
+.line.on{color:#fff;font-size:15px}
+
+.bar{height:70px;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:space-between;padding:0 20px}
+.bar-left{display:flex;align-items:center;gap:22px}
+.bar-center{display:flex;align-items:center;gap:22px}
+.bar-right{display:flex;align-items:center;gap:22px}
+.bar button{background:none;border:none;cursor:pointer;width:36px;height:36px}
+
+.rate-btn{
+  color:#fff;background:rgba(255,255,255,0.1);
+  border:none;border-radius:6px;padding:4px 8px;
+  cursor:pointer;font-size:12px;margin-left:6px
+}
+
+.volume-box{display:flex;align-items:center;gap:8px}
+.volume{width:80px;height:4px;background:#333;border-radius:2px;cursor:pointer}
+.volume-inner{height:100%;background:#fff;width:80%;border-radius:2px}
+
+.user{position:absolute;top:55px;left:20px;font-size:12px;color:#fff}
+.list{position:absolute;right:24px;bottom:80px;width:280px;background:rgba(20,20,20,0.9);backdrop-filter:blur(10px);border-radius:8px;padding:14px;display:none}
+.list.show{display:block}
+.list-title{display:flex;justify-content:space-between;margin-bottom:10px;font-size:14px;color:#fff}
+.list-close{cursor:pointer;color:#ccc}
+.item{padding:8px;color:#ccc;cursor:pointer}
+.item.on{background:rgba(255,255,255,0.1);color:#fff}
+
+@keyframes rot{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+
+#random{background:url(./mode1.png) center no-repeat;background-size:contain}
+#prev{background:url(./上一首.png) center no-repeat;background-size:contain}
+#toggle{background:url(./继续播放.png) center no-repeat;background-size:contain}
+#next{background:url(./下一首.png) center no-repeat;background-size:contain}
+#openList{background:url(./列表.png) center no-repeat;background-size:contain}
+#volume{background:url(./音量.png) center no-repeat;background-size:contain}
+
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="head">
+<div>网易云音乐</div>
+<!-- 去掉了窗口控制 -->
+</div>
+<div class="user">学号：24215220106 姓名：叶燕婷</div>
+
+<div class="main">
+  <div class="disc">
+    <div class="record" id="record"></div>
+    <div class="arm" id="arm"></div>
+  </div>
+  <div class="panel">
+    <div class="song-name" id="songName">歌曲名</div>
+    <div class="singer-name" id="singerName">歌手</div>
+    <div class="lyric-box">
+      <div class="lyric" id="lyric"></div>
+    </div>
+  </div>
+</div>
+
+<div class="bar">
+  <div class="bar-left">
+    <button id="openList"></button>
+  </div>
+  <div class="bar-center">
+    <button id="random"></button>
+    <button id="prev"></button>
+    <button id="toggle"></button>
+    <button id="next"></button>
+    <button class="rate-btn" id="rateBtn">1.0x</button>
+  </div>
+  <div class="bar-right">
+    <div class="volume-box">
+      <button id="volume"></button>
+      <div class="volume" id="volumeBar">
+        <div class="volume-inner" id="volumeInner"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="list" id="list">
+  <div class="list-title">
+    <div>播放列表</div>
+    <div class="list-close" id="closeList">×</div>
+  </div>
+</div>
+
+<audio id="audio">
+
+<script>
+const music = [
+  {
+    name:"洛春赋",
+    singer:"云汐",
+    url:"./music0.mp3",
+    bg:"bg0.png",
+    cover:"record0.jpg",
+    lrc:`[00:00.00]洛春赋
+[00:15.00]风拂长堤柳色新
+[00:18.00]燕归旧巷觅前尘
+[00:22.00]一纸春词书不尽
+[00:25.00]那年花下遇故人
+[00:29.00]烟雨江南画中人
+[00:32.00]轻舟泛水渡晨昏`
+  },
+  {
+    name:"晴天",
+    singer:"周杰伦",
+    url:"./music1.mp3",
+    bg:"bg1.png",
+    cover:"record1.jpg",
+    lrc:`[00:00.00]晴天
+[00:15.00]故事的小黄花
+[00:18.00]从出生那年就飘着
+[00:22.00]童年的荡秋千
+[00:25.00]随记忆一直晃到现在`
+  },
+  {
+    name:"江南",
+    singer:"林俊杰",
+    url:"./music2.mp3",
+    bg:"bg2.png",
+    cover:"record2.jpg",
+    lrc:`[00:00.00]江南
+[00:15.00]圈圈圆圆圈圈
+[00:18.00]天天年年天天的我
+[00:22.00]深深看你的脸`
+  },
+  {
+    name:"春不晚",
+    singer:"司南",
+    url:"./music3.mp3",
+    bg:"bg3.png",
+    cover:"record3.jpg",
+    lrc:`[00:00.00]春不晚
+[00:15.00]江南春不晚 等一人归岸
+[00:18.00]风拂杨柳岸 岁月都缓慢
+[00:22.00]纸伞撑烟雨 故事说不完`
+  }
+]
+
+const a = document.getElementById("audio")
+const songName = document.getElementById("songName")
+const singerName = document.getElementById("singerName")
+const l = document.getElementById("lyric")
+const r = document.getElementById("record")
+const am = document.getElementById("arm")
+const tog = document.getElementById("toggle")
+const pv = document.getElementById("prev")
+const nx = document.getElementById("next")
+const ol = document.getElementById("openList")
+const cl = document.getElementById("closeList")
+const rand = document.getElementById("random")
+const vol = document.getElementById("volume")
+const volBar = document.getElementById("volumeBar")
+const volInner = document.getElementById("volumeInner")
+const bg = document.querySelector(".bg")
+const list = document.getElementById("list")
+const rateBtn = document.getElementById("rateBtn")
+
+let i = 0
+let p = false
+let lt = []
+let lc = []
+let mode = 0
+let muted = false
+let rateList = [0.75, 1.0, 1.25, 1.5, 2.0]
+let rateIndex = 1
+
+function loadList(){
+  music.forEach((item,idx)=>{
+    const d=document.createElement("div")
+    d.className="item"
+    d.dataset.i=idx
+    d.innerText=`${idx+1}. ${item.name} - ${item.singer}`
+    list.appendChild(d)
+  })
+  document.querySelectorAll(".item").forEach((x,n)=>{
+    x.onclick=()=>{i=n;load();a.play();p=true;r.classList.add("play");am.classList.add("play");list.classList.remove("show");updateBtn()}
+  })
+}
+
+function load(){
+  const m=music[i]
+  songName.innerText = m.name
+  singerName.innerText = m.singer
+  a.src = m.url
+  bg.style.backgroundImage = `url(./${m.bg})`
+  r.style.backgroundImage = `url(./${m.cover})`
+  lp(m.lrc)
+  document.querySelectorAll(".item").forEach((x,n)=>x.classList.toggle("on",n===i))
+}
+
+function lp(x){
+  const arr=x.split("\n")
+  lt=[]
+  lc=[]
+  arr.forEach(s=>{
+    const reg=/\[(\d{2}):(\d{2}\.\d{2})\]/
+    const res=s.match(reg)
+    if(res){
+      const ti=parseInt(res[1])*60+parseFloat(res[2])
+      const tx=s.replace(reg,"")
+      lt.push(ti)
+      lc.push(tx)
+    }
+  })
+  rl()
+}
+function rl(){
+  l.innerHTML=""
+  lc.forEach(x=>{
+    const d=document.createElement("div")
+    d.className="line"
+    d.innerText=x
+    l.appendChild(d)
+  })
+}
+
+function pt(){
+  p?a.pause():a.play()
+  p=!p
+  r.classList.toggle("play",p)
+  am.classList.toggle("play",p)
+  updateBtn()
+}
+
+function up(){
+  const ct=a.currentTime
+  const lines=document.querySelectorAll(".line")
+  for(let x=0;x<lt.length;x++){
+    if(ct>=lt[x]&&(x===lt.length-1||ct<lt[x+1])){
+      lines.forEach(n=>n.classList.remove("on"))
+      lines[x].classList.add("on")
+      const os=(x-Math.floor(lines.length/2))*32
+      l.style.transform=`translate(-50%,calc(-50% + ${-os}px))`
+      break
+    }
+  }
+}
+
+function changeMode(){
+  mode=(mode+1)%3
+  if(mode===0){rand.style.backgroundImage='url(./mode1.png)'}
+  if(mode===1){rand.style.backgroundImage='url(./mode2.png)'}
+  if(mode===2){rand.style.backgroundImage='url(./mode3.png)'}
+}
+
+function handleEnd(){
+  if(mode===0){i=Math.floor(Math.random()*music.length)}
+  if(mode===1){i=(i+1)%music.length}
+  if(mode===2){a.currentTime=0;a.play()}
+  load()
+  if(p){a.play()}
+}
+
+function toggleMute(){
+  muted=!muted
+  a.muted=muted
+  vol.style.backgroundImage=muted?'url(./静音.png)':'url(./音量.png)'
+}
+function setVolume(e){
+  const w=volBar.clientWidth
+  const v=e.offsetX/w
+  a.volume=v
+  volInner.style.width=v*100+"%"
+}
+
+rateBtn.onclick = () => {
+  rateIndex = (rateIndex + 1) % rateList.length
+  let r = rateList[rateIndex]
+  a.playbackRate = r
+  rateBtn.innerText = r.toFixed(2) + 'x'
+}
+
+pv.onclick=()=>{i=(i-1+music.length)%music.length;load();a.play();p=true;r.classList.add("play");am.classList.add("play");updateBtn()}
+nx.onclick=()=>{i=(i+1)%music.length;load();a.play();p=true;r.classList.add("play");am.classList.add("play");updateBtn()}
+
+tog.onclick=pt
+rand.onclick=changeMode
+vol.onclick=toggleMute
+volBar.onclick=setVolume
+a.ontimeupdate=up
+a.onended=handleEnd
+ol.onclick=()=>list.classList.add("show")
+cl.onclick=()=>list.classList.remove("show")
+
+function updateBtn(){
+  if(p){tog.style.backgroundImage='url(./暂停.png)'}
+  else{tog.style.backgroundImage='url(./继续播放.png)'}
+}
+
+loadList()
+load()
+</script>
+</body>
+</html>
